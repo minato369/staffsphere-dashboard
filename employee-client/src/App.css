@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  /* Tailwind v4 CSS native theme extensions go directly here */
+  --color-brand-primary: #0f172a; /* Slate 900 */
+  --color-brand-accent: #2563eb;  /* Blue 600 */
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
