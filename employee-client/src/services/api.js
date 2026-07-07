@@ -12,8 +12,8 @@ const getHeaders = () => {
 export const employeeAPI = {
 	getAll: async () => {
 		const response = await fetch(`${BASE_URL}/employees`, {
-		method: "GET",
-		headers: getHeaders(),
+			method: "GET",
+			headers: getHeaders(),
 		});
 		if (!response) throw new Error("Failed to load employee records.");
 		return response.json();
@@ -38,4 +38,20 @@ export const employeeAPI = {
 		if (!response) throw new Error("Failed to create employee record.");
 		return data;
 	},
+
+	delete: async (id) => {
+		const response = await fetch(`${BASE_URL}/employees/${id}`, {
+		method: 'DELETE',
+		headers: getHeaders()
+	});
+	console.log(response);
+	
+	// If the server rejects the deletion request, catch and throw the error reason
+	if (!response.ok) {
+		const data = await response.json().catch(() => ({}));
+		throw new Error(data.message || 'Administrative rejection: Failed to remove user record.');
+	}
+
+	return true;
+	}
 };
