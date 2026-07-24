@@ -1,23 +1,29 @@
 import React, { useState, useEffect } from 'react'
 import { employeeAPI } from '../services/api';
 import AddEmployeeModal from '../components/AddEmployeeModal';
+import EditEmployeeModal from '../components/EditEmployeeModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import ForcePasswordResetModal from '../components/ForcePasswordResetModal';
 import { useAuth } from '../context/AuthContext';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 
 const Directory = () => {
-	const { user } = useAuth()
+	const { user, updateUser } = useAuth()
 	const [employees, setEmployees] = useState([]);
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 
-	// 🛠️ States for operational deletion anchors
+	// States for operational deletion anchors
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 	const [selectedEmployee, setSelectedEmployee] = useState(null);
 
 	const [searchTerm, setSearchTerm] = useState('');
 	const [roleFilter, setRoleFilter] = useState('All');
+
+	// States for Edit Modal
+	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+	const [selectedEditEmployee, setSelectedEditEmployee] = useState(null);
 
 	const totalStaff = employees.length;
 	const totalAdmins = employees.filter(emp => emp.role === 'Admin').length;
@@ -46,7 +52,7 @@ const Directory = () => {
 		}
 	};
 
-	// 🛠️ Execute API removal command on concrete confirmation
+	// Execute API removal command on concrete confirmation
 	const handleDeleteExecute = async () => {
 		if (!selectedEmployee) return;
 		await employeeAPI.delete(selectedEmployee.id);
@@ -56,6 +62,28 @@ const Directory = () => {
 	const triggerDeletePrompt = (employee) => {
 		setSelectedEmployee(employee);
 		setIsDeleteModalOpen(true);
+	};
+
+	// Trigger Edit Modal Pre-filled
+	const triggerEditPrompt = (employee) => {
+		setSelectedEditEmployee(employee);
+		setIsEditModalOpen(true);
+	};
+
+	// Execute Update API call and update state locally
+	const handleUpdateExecute = async (id, updatedFields) => {
+		const response = await employeeAPI.updateEmployee(id, updatedFields);
+		const updatedRecord = response.employee || response;
+
+		// Update local React state so UI updates in real-time
+		setEmployees(prev =>
+			prev.map(emp => (emp.id === id ? { ...emp, ...updatedRecord } : emp))
+		);
+	};
+
+	const handlePasswordResetComplete = (updatedUser) => {
+		// Update local user state so isInitialPassword becomes false
+		updateUser(updatedUser);
 	};
 
 	useEffect(() => {
@@ -189,7 +217,7 @@ const Directory = () => {
 								<th className="px-6 py-4">Full Name</th>
 								<th className="px-6 py-4">Email Address</th>
 								<th className="px-6 py-4">Access Role</th>
-								{/* 🛠️ Dynamically show "Actions" column only if user has privilege */}
+								{/* Dynamically show "Actions" column only if user has privilege */}
 								{(user?.role === 'Admin' || user?.role === 'Manager') && (
 									<th className="px-6 py-4 text-right">Actions</th>
 								)}
@@ -212,23 +240,35 @@ const Directory = () => {
 											{emp.role}
 										</span>
 									</td>
-									{/* 🛠️ Render action controls button if allowed */}
+									{/* Render action controls button if allowed */}
 									{(user?.role === 'Admin' || user?.role === 'Manager') && (
 										<td className="px-6 py-4 text-right">
-											{/* Prevent managers from erasing Admins or themselves */}
 											{user.role === 'Manager' && emp.role === 'Admin' ? (
 												<span className="text-xs font-medium text-slate-400 italic">Locked</span>
-											) : user.id === emp.id ? (
-												<span className="text-xs font-medium text-slate-400 italic">You</span>
 											) : (
-												<button
-													onClick={() => triggerDeletePrompt(emp)}
-													className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition duration-150 cursor-pointer"
-													title="Delete Profile"
-												>
-													{/* 🛠️ Lucide Icon: Automatically bounded, centered, and crisp */}
-													<Trash2 className="w-4 h-4" strokeWidth={2.2} />
-												</button>
+												<div className="flex items-center justify-end gap-1">
+													{/* Edit Button */}
+													<button
+														onClick={() => triggerEditPrompt(emp)}
+														className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition duration-150 cursor-pointer"
+														title="Edit Profile"
+													>
+														<Pencil className="w-4 h-4" strokeWidth={2.2} />
+													</button>
+
+													{/* Delete Button (Blocked for self-deletion) */}
+													{user.id === emp.id ? (
+														<span className="text-xs font-medium text-slate-400 italic px-2">You</span>
+													) : (
+														<button
+															onClick={() => triggerDeletePrompt(emp)}
+															className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition duration-150 cursor-pointer"
+															title="Delete Profile"
+														>
+															<Trash2 className="w-4 h-4" strokeWidth={2.2} />
+														</button>
+													)}
+												</div>
 											)}
 										</td>
 									)}
@@ -254,7 +294,18 @@ const Directory = () => {
 				onRefresh={fetchEmployees}
 			/>
 
-			{/* 🛠️ Injected Structural Deletion Protection Guard Modal */}
+			<EditEmployeeModal
+				isOpen={isEditModalOpen}
+				onClose={() => {
+					setIsEditModalOpen(false);
+					setSelectedEditEmployee(null);
+				}}
+				employee={selectedEditEmployee}
+				onUpdateSuccess={handleUpdateExecute}
+				currentUserRole={user?.role}
+			/>
+
+			{/* Injected Structural Deletion Protection Guard Modal */}
 			<DeleteConfirmationModal
 				isOpen={isDeleteModalOpen}
 				onClose={() => {
@@ -264,6 +315,13 @@ const Directory = () => {
 				onConfirm={handleDeleteExecute}
 				employeeName={selectedEmployee?.name || ''}
 			/>
+
+			<ForcePasswordResetModal
+				isOpen={user?.isInitialPassword === true}
+				onPasswordChanged={handlePasswordResetComplete}
+			/>
+
+
 		</div>
 	)
 }

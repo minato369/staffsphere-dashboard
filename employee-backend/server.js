@@ -26,9 +26,9 @@ const seedRootAdmin = async () => {
 
         if (!adminExist) {
             console.log("No administrator detected. Securing slot ID 1 for Root Admin...");
-            
+
             const hashedPassword = await bcrypt.hash('password', 10);
-            
+
             // 1. Create the root admin locked strictly to ID 1
             await Employee.create({
                 id: 1, // Enforce ID 1
@@ -42,7 +42,7 @@ const seedRootAdmin = async () => {
 
             // 2. Force MariaDB to start all future automatic employee IDs from 2 onwards
             await sequelize.query("ALTER TABLE Employees AUTO_INCREMENT = 2;");
-            
+
             console.log("Admin locked at ID 1! Future entries will start at ID 2. (User: Admin@gmail.com / Pass: password)");
         } else {
             console.log("Administrator account verified active at slot ID 1.");
@@ -54,21 +54,21 @@ const seedRootAdmin = async () => {
 //API ENDPOINTS
 
 
-app.get('/', (req,res)=>{
-		const message = 'Welcome to employee backend';
-		res.json({message:message})
-		console.log(message)
+app.get('/', (req, res) => {
+    const message = 'Welcome to employee backend';
+    res.json({ message: message })
+    console.log(message)
 })
 
-sequelize.sync({alter:true}).then(async()=>{
-		console.log('Database synced');
-		await seedRootAdmin();
-		app.listen(PORT, ()=>console.log(`Server running on http://localhost:${PORT}`))
-	}).catch(err => {
-		console.error('✗ Database synchronization crashed:', err.message);
+sequelize.sync().then(async () => {
+    console.log('Database synced');
+    await seedRootAdmin();
+    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`))
+}).catch(err => {
+    console.error('✗ Database synchronization crashed:', err.message);
 });
 
 
 app.listen(PORT, () => {
-	console.log(`Isolated test server running on http://localhost:${PORT}`);
+    console.log(`Isolated test server running on http://localhost:${PORT}`);
 });

@@ -1,3 +1,5 @@
+
+
 const BASE_URL = "http://localhost:5000/api";
 
 const getHeaders = () => {
@@ -29,7 +31,7 @@ export const employeeAPI = {
 		const data = await response.json();
 
 		console.log(data);
-		
+
 		if (!response.ok) {
 			throw new Error(
 				data.message || "This Email or Employee ID is already registered.",
@@ -41,17 +43,66 @@ export const employeeAPI = {
 
 	delete: async (id) => {
 		const response = await fetch(`${BASE_URL}/employees/${id}`, {
-		method: 'DELETE',
-		headers: getHeaders()
-	});
-	console.log(response);
-	
-	// If the server rejects the deletion request, catch and throw the error reason
-	if (!response.ok) {
-		const data = await response.json().catch(() => ({}));
-		throw new Error(data.message || 'Administrative rejection: Failed to remove user record.');
-	}
+			method: 'DELETE',
+			headers: getHeaders()
+		});
+		console.log(response);
 
-	return true;
+		// If the server rejects the deletion request, catch and throw the error reason
+		if (!response.ok) {
+			const data = await response.json().catch(() => ({}));
+			throw new Error(data.message || 'Administrative rejection: Failed to remove user record.');
+		}
+
+		return true;
+	},
+
+	updateEmployee: async (id, employeeData) => {
+		const response = await fetch(`${BASE_URL}/employees/${id}`, {
+			method: 'PUT',
+			headers: getHeaders(),
+			body: JSON.stringify(employeeData)
+		});
+		const data = await response.json();
+
+		if (!response.ok) {
+			throw new Error(data.message || 'Failed to update employee profile.');
+		}
+
+		return data;
+	},
+	changePassword: async (currentPassword, newPassword) => {
+		console.log(currentPassword);
+
+		const response = await fetch(`${BASE_URL}/auth/change-password`, {
+			method: 'POST',
+			headers: getHeaders(),
+			body: JSON.stringify({ currentPassword, newPassword })
+		});
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			throw new Error(data.message || 'Failed to update credentials.');
+		}
+
+		return data;
+	},
+
+	updateMyProfile: async (profileData) => {
+		const token = localStorage.getItem("ss_token")
+
+		const response = await fetch(`${BASE_URL}/employees/me`, {
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${token}`
+			},
+			body: JSON.stringify(profileData)
+		});
+
+		const data = await response.json();
+		if (!response.ok) throw new Error(data.message || 'Failed to update profile');
+		return data;
 	}
 };

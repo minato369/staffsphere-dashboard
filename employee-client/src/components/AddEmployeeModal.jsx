@@ -36,7 +36,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
             setRole('Employee');
             onRefresh();
             onClose();
-            
+
         } catch (err) {
             setError(err.message || 'Failed to register record.');
         } finally {
