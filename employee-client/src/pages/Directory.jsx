@@ -5,7 +5,8 @@ import EditEmployeeModal from '../components/EditEmployeeModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import ForcePasswordResetModal from '../components/ForcePasswordResetModal';
 import { useAuth } from '../context/AuthContext';
-import { Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import exportToCsv from '../utils/exportCsv.js'
 
 const Directory = () => {
 	const { user, updateUser } = useAuth()
@@ -21,6 +22,10 @@ const Directory = () => {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [roleFilter, setRoleFilter] = useState('All');
 
+	// States for Pagination
+	const [currentPage, setCurrentPage] = useState(1);
+	const [rowsPerPage, setRowsPerPage] = useState(10);
+
 	// States for Edit Modal
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 	const [selectedEditEmployee, setSelectedEditEmployee] = useState(null);
@@ -30,6 +35,18 @@ const Directory = () => {
 	const totalManagers = employees.filter(emp => emp.role === 'Manager').length;
 	const totalEmployees = employees.filter(emp => emp.role === 'Employee').length;
 
+	// Reset to page 1 whenever search terms or role filters mutate
+	const handleSearchChange = (e) => {
+		setSearchTerm(e.target.value);
+		setCurrentPage(1);
+	};
+
+	const handleRoleChange = (e) => {
+		setRoleFilter(e.target.value);
+		setCurrentPage(1);
+	};
+
+	// 1. Filtered Dataset
 	const filteredEmployees = employees.filter((emp) => {
 		const matchesSearch =
 			emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -40,6 +57,12 @@ const Directory = () => {
 
 		return matchesSearch && matchesRole;
 	});
+
+	// 2. Pagination Calculations
+	const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage) || 1;
+	const indexOfLastRow = currentPage * rowsPerPage;
+	const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+	const currentRows = filteredEmployees.slice(indexOfFirstRow, indexOfLastRow);
 
 	const fetchEmployees = async () => {
 		try {
@@ -56,7 +79,7 @@ const Directory = () => {
 	const handleDeleteExecute = async () => {
 		if (!selectedEmployee) return;
 		await employeeAPI.delete(selectedEmployee.id);
-		fetchEmployees(); // Refresh data grid list natively on successful execution
+		fetchEmployees();
 	};
 
 	const triggerDeletePrompt = (employee) => {
@@ -75,15 +98,19 @@ const Directory = () => {
 		const response = await employeeAPI.updateEmployee(id, updatedFields);
 		const updatedRecord = response.employee || response;
 
-		// Update local React state so UI updates in real-time
 		setEmployees(prev =>
 			prev.map(emp => (emp.id === id ? { ...emp, ...updatedRecord } : emp))
 		);
 	};
 
 	const handlePasswordResetComplete = (updatedUser) => {
-		// Update local user state so isInitialPassword becomes false
 		updateUser(updatedUser);
+	};
+
+	// Handle CSV export (exports all matching records across all pages)
+	const handleExport = () => {
+		const recordsToExport = filteredEmployees.length > 0 ? filteredEmployees : employees;
+		exportToCsv(recordsToExport, `employees_export_${new Date().toISOString().slice(0, 10)}.csv`);
 	};
 
 	useEffect(() => {
@@ -100,21 +127,31 @@ const Directory = () => {
 					<h1 className="text-3xl font-extrabold tracking-tight text-slate-950">Employee Directory</h1>
 					<p className="text-sm text-slate-500 font-medium mt-0.5">Manage system access tiers, operational logs, and profiles.</p>
 				</div>
-
-				{(user?.role === 'Admin' || user?.role === 'Manager') && (
+				<div className="flex items-center gap-3">
 					<button
-						onClick={() => setIsModalOpen(true)}
-						className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/10 transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-600/20 cursor-pointer self-start sm:self-auto"
+						onClick={handleExport}
+						disabled={employees.length === 0}
+						className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer disabled:opacity-50"
+						title="Export directory records to CSV"
 					>
-						<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-						Add Employee
+						<Download className="w-4 h-4 text-slate-500" />
+						Export CSV
 					</button>
-				)}
+
+					{(user?.role === 'Admin' || user?.role === 'Manager') && (
+						<button
+							onClick={() => setIsModalOpen(true)}
+							className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/10 transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-600/20 cursor-pointer self-start sm:self-auto"
+						>
+							<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+							Add Employee
+						</button>
+					)}
+				</div>
 			</div>
 
 			{/* Dynamic Metric Stats Grid Cards Row */}
 			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				{/* Total Strength Card */}
 				<div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs transition hover:shadow-md hover:border-slate-200/80">
 					<div className="flex items-center justify-between">
 						<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Strength</span>
@@ -128,7 +165,6 @@ const Directory = () => {
 					</div>
 				</div>
 
-				{/* Executive Core Card */}
 				<div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs transition hover:shadow-md hover:border-slate-200/80">
 					<div className="flex items-center justify-between">
 						<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Executive Core</span>
@@ -142,7 +178,6 @@ const Directory = () => {
 					</div>
 				</div>
 
-				{/* Management Card */}
 				<div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs transition hover:shadow-md hover:border-slate-200/80">
 					<div className="flex items-center justify-between">
 						<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Management</span>
@@ -156,7 +191,6 @@ const Directory = () => {
 					</div>
 				</div>
 
-				{/* Operations Card */}
 				<div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs transition hover:shadow-md hover:border-slate-200/80">
 					<div className="flex items-center justify-between">
 						<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Operations Staff</span>
@@ -186,7 +220,7 @@ const Directory = () => {
 					<input
 						type="text"
 						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
+						onChange={handleSearchChange}
 						placeholder="Search workspace profiles by name, email, or employee ID..."
 						className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 transition focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-600/5 placeholder-slate-400 font-medium"
 					/>
@@ -195,7 +229,7 @@ const Directory = () => {
 				<div className="w-full sm:w-48">
 					<select
 						value={roleFilter}
-						onChange={(e) => setRoleFilter(e.target.value)}
+						onChange={handleRoleChange}
 						className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 font-semibold transition focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-600/5 shadow-xs cursor-pointer"
 					>
 						<option value="All">All Status Roles</option>
@@ -217,14 +251,13 @@ const Directory = () => {
 								<th className="px-6 py-4">Full Name</th>
 								<th className="px-6 py-4">Email Address</th>
 								<th className="px-6 py-4">Access Role</th>
-								{/* Dynamically show "Actions" column only if user has privilege */}
 								{(user?.role === 'Admin' || user?.role === 'Manager') && (
 									<th className="px-6 py-4 text-right">Actions</th>
 								)}
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-slate-100 font-normal text-slate-950">
-							{filteredEmployees.map((emp) => (
+							{currentRows.map((emp) => (
 								<tr key={emp.id} className="hover:bg-slate-50/50 transition">
 									<td className="px-6 py-4 font-mono text-xs text-slate-400 font-bold">#{emp.id}</td>
 									<td className="px-6 py-4 font-medium text-slate-600">{emp.employeeId}</td>
@@ -240,14 +273,12 @@ const Directory = () => {
 											{emp.role}
 										</span>
 									</td>
-									{/* Render action controls button if allowed */}
 									{(user?.role === 'Admin' || user?.role === 'Manager') && (
 										<td className="px-6 py-4 text-right">
 											{user.role === 'Manager' && emp.role === 'Admin' ? (
 												<span className="text-xs font-medium text-slate-400 italic">Locked</span>
 											) : (
 												<div className="flex items-center justify-end gap-1">
-													{/* Edit Button */}
 													<button
 														onClick={() => triggerEditPrompt(emp)}
 														className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition duration-150 cursor-pointer"
@@ -256,7 +287,6 @@ const Directory = () => {
 														<Pencil className="w-4 h-4" strokeWidth={2.2} />
 													</button>
 
-													{/* Delete Button (Blocked for self-deletion) */}
 													{user.id === emp.id ? (
 														<span className="text-xs font-medium text-slate-400 italic px-2">You</span>
 													) : (
@@ -285,6 +315,78 @@ const Directory = () => {
 						</tbody>
 					</table>
 				</div>
+
+				{/* 📑 Dynamic Pagination Controls Toolbar */}
+				{filteredEmployees.length > 0 && (
+					<div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-200/60 bg-slate-50/60">
+						{/* Current view counts and page sizing */}
+						<div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+							<span>
+								Showing <strong className="text-slate-800">{indexOfFirstRow + 1}</strong> to <strong className="text-slate-800">{Math.min(indexOfLastRow, filteredEmployees.length)}</strong> of <strong className="text-slate-800">{filteredEmployees.length}</strong> records
+							</span>
+
+							<div className="flex items-center gap-1.5 ml-2 border-l border-slate-200 pl-3">
+								<span>Rows:</span>
+								<select
+									value={rowsPerPage}
+									onChange={(e) => {
+										setRowsPerPage(Number(e.target.value));
+										setCurrentPage(1);
+									}}
+									className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 shadow-2xs focus:border-indigo-600 focus:outline-none cursor-pointer"
+								>
+									<option value={5}>5</option>
+									<option value={10}>10</option>
+									<option value={25}>25</option>
+									<option value={50}>50</option>
+								</select>
+							</div>
+						</div>
+
+						{/* Page Navigation Buttons */}
+						<div className="flex items-center gap-1">
+							<button
+								onClick={() => setCurrentPage(1)}
+								disabled={currentPage === 1}
+								className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+								title="First Page"
+							>
+								<ChevronsLeft className="w-4 h-4" />
+							</button>
+
+							<button
+								onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+								disabled={currentPage === 1}
+								className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+								title="Previous Page"
+							>
+								<ChevronLeft className="w-4 h-4" />
+							</button>
+
+							<span className="px-3 text-xs font-bold text-slate-700">
+								Page {currentPage} of {totalPages}
+							</span>
+
+							<button
+								onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+								disabled={currentPage === totalPages}
+								className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+								title="Next Page"
+							>
+								<ChevronRight className="w-4 h-4" />
+							</button>
+
+							<button
+								onClick={() => setCurrentPage(totalPages)}
+								disabled={currentPage === totalPages}
+								className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+								title="Last Page"
+							>
+								<ChevronsRight className="w-4 h-4" />
+							</button>
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* Injected Slide-over Creation Modal */}
@@ -320,8 +422,6 @@ const Directory = () => {
 				isOpen={user?.isInitialPassword === true}
 				onPasswordChanged={handlePasswordResetComplete}
 			/>
-
-
 		</div>
 	)
 }
