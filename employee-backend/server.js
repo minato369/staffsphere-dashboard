@@ -6,6 +6,7 @@ import sequelize from './config/database.js'
 import Employee from './models/employee.js';
 import employeeRoutes from './routes/employee_route.js';
 import authRoutes from './routes/auth_route.js';
+import auditRoutes from './routes/audit_routes.js';
 
 dotenv.config();
 const app = express();
@@ -17,6 +18,10 @@ const PORT = process.env.PORT || 5000;
 //Api Endpoints
 app.use('/api/employees', employeeRoutes);
 app.use('/api/auth', authRoutes);
+
+
+
+app.use('/api/audit-logs', auditRoutes);
 
 // Make sure admin will never get deleted
 

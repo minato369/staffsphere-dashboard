@@ -1,7 +1,7 @@
 import Employee from "../models/employee.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-
+import { logActivity } from "../utils/audit_logger.js";
 // Get All employees
 
 export const getAllEmployees = async (req, res) => {
@@ -50,6 +50,15 @@ export const createEmployee = async (req, res) => {
 			isInitialPassword: true, // Rule 5: True until the employee logs in and performs a self-reset
 		});
 
+		// Record Activity Log
+		await logActivity({
+			action: 'CREATE_EMPLOYEE',
+			req,
+			targetId: newEmployee.id,
+			targetName: newEmployee.name,
+			details: `Initialized ${newEmployee.role} profile with Employee ID: ${newEmployee.employeeId}`
+		});
+
 		res.status(201).json({
 			message: `${role} record initialized successfully.`,
 			employee: {
@@ -66,10 +75,10 @@ export const createEmployee = async (req, res) => {
 
 	} catch (error) {
 		if (error.name === "SequelizeUniqueConstraintError") {
-			const field = error.errors[0].path;
-			return res.status(400).json({ message: `The ${field} provided is already assigned to an employee.`, });
+			const field = error.errors[0]?.path || 'field';
+			return res.status(400).json({ message: `The ${field} provided is already assigned to an employee.` });
 		}
-		res.status(500).json({ message: "Profile initialization failed.", error: error.message, });
+		res.status(500).json({ message: "Profile initialization failed.", error: error.message });
 	}
 };
 
@@ -97,7 +106,20 @@ export const deleteEmployee = async (req, res) => {
 			});
 		}
 
+		const targetId = employeeToDelete.id;
+		const targetName = employeeToDelete.name;
+		const targetRole = employeeToDelete.role;
+
 		await employeeToDelete.destroy();
+
+		//Record Activity Log
+		await logActivity({
+			action: 'DELETE_EMPLOYEE',
+			req,
+			targetId,
+			targetName,
+			details: `Purged ${targetRole} profile (${targetName}) from database.`
+		});
 
 		res.status(200).json({ message: "Profile successfully purged from directory database stack." });
 
@@ -153,6 +175,15 @@ export const updateEmployee = async (req, res) => {
 
 		await employee.save();
 
+		//Record Activity Log
+		await logActivity({
+			action: 'UPDATE_EMPLOYEE',
+			req,
+			targetId: employee.id,
+			targetName: employee.name,
+			details: `Updated details for ${employee.name} (${employee.employeeId})`
+		});
+
 		res.status(200).json({
 			message: "Employee profile successfully updated.",
 			employee: {
@@ -196,6 +227,15 @@ export const updateMyProfile = async (req, res) => {
 
 		await employee.save();
 
+		//Record Activity Log
+		await logActivity({
+			action: 'PROFILE_UPDATE',
+			req,
+			targetId: employee.id,
+			targetName: employee.name,
+			details: 'Self-updated personal contact information'
+		});
+
 		res.status(200).json({
 			message: "Personal profile updated successfully.",
 			employee: {
@@ -216,3 +256,4 @@ export const updateMyProfile = async (req, res) => {
 		});
 	}
 };
+

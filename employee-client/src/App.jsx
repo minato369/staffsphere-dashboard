@@ -4,10 +4,11 @@ import Login from './pages/Login'
 import { useAuth } from './context/AuthContext'
 import Directory from './pages/Directory'
 import Profile from './pages/Profile'
+import AuditLogs from './pages/AuditLogs'
 
 function App() {
 	const { isAuthenticated, user, updateUser, logout } = useAuth();
-	// Tracking active view via a clean local layout string state
+	// Tracking active view: 'directory' | 'audit' | 'profile'
 	const [currentView, setCurrentView] = useState('directory');
 	console.log(user);
 
@@ -15,6 +16,8 @@ function App() {
 	if (!isAuthenticated || !user) {
 		return <Login />;
 	}
+
+	const isPrivileged = user?.role === 'Admin' || user?.role === 'Manager';
 
 	return (
 		<div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans">
@@ -27,7 +30,7 @@ function App() {
 					{/* Header Workspace Badge */}
 					<div className="flex items-center gap-3 text-xl font-bold tracking-tight text-white">
 						<div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-600/30">
-							<span className="text-xs text-white">S</span>
+							<span className="text-xs text-white font-black">S</span>
 						</div>
 						StaffSphere
 					</div>
@@ -43,6 +46,19 @@ function App() {
 						>
 							Employee Directory
 						</button>
+
+						{/* Audit Logs tab: Visible exclusively to Admins & Managers */}
+						{isPrivileged && (
+							<button
+								onClick={() => setCurrentView('audit')}
+								className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer ${currentView === 'audit'
+									? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+									: 'text-slate-400 hover:bg-white/5 hover:text-white'
+									}`}
+							>
+								Activity Audit Logs
+							</button>
+						)}
 
 						<button
 							onClick={() => setCurrentView('profile')}
@@ -87,6 +103,7 @@ function App() {
 				{/* Conditional View Rendering */}
 				<div className="p-8 flex-1 bg-slate-50">
 					{currentView === 'directory' && <Directory />}
+					{currentView === 'audit' && isPrivileged && <AuditLogs />}
 					{currentView === 'profile' && (
 						<Profile user={user} onProfileUpdated={(updatedUser) => updateUser(updatedUser)} />
 					)}

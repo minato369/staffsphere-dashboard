@@ -1,10 +1,7 @@
-
-
 const BASE_URL = "http://localhost:5000/api";
 
 const getHeaders = () => {
 	const token = localStorage.getItem("ss_token");
-
 	return {
 		"Content-Type": "application/json",
 		Authorization: `Bearer ${token}`,
@@ -12,15 +9,17 @@ const getHeaders = () => {
 };
 
 export const employeeAPI = {
+	// 📋 Fetch all directory profiles
 	getAll: async () => {
 		const response = await fetch(`${BASE_URL}/employees`, {
 			method: "GET",
 			headers: getHeaders(),
 		});
-		if (!response) throw new Error("Failed to load employee records.");
+		if (!response.ok) throw new Error("Failed to load employee records.");
 		return response.json();
 	},
 
+	// ➕ Create new employee
 	create: async (employeeData) => {
 		const response = await fetch(`${BASE_URL}/employees`, {
 			method: "POST",
@@ -29,80 +28,87 @@ export const employeeAPI = {
 		});
 
 		const data = await response.json();
-
-		console.log(data);
-
 		if (!response.ok) {
 			throw new Error(
-				data.message || "This Email or Employee ID is already registered.",
+				data.message || "This Email or Employee ID is already registered."
 			);
 		}
-		if (!response) throw new Error("Failed to create employee record.");
 		return data;
 	},
 
+	// ❌ Purge / Delete employee
 	delete: async (id) => {
 		const response = await fetch(`${BASE_URL}/employees/${id}`, {
-			method: 'DELETE',
-			headers: getHeaders()
+			method: "DELETE",
+			headers: getHeaders(),
 		});
-		console.log(response);
 
-		// If the server rejects the deletion request, catch and throw the error reason
 		if (!response.ok) {
 			const data = await response.json().catch(() => ({}));
-			throw new Error(data.message || 'Administrative rejection: Failed to remove user record.');
+			throw new Error(
+				data.message || "Administrative rejection: Failed to remove user record."
+			);
 		}
-
 		return true;
 	},
 
+	// ✏️ Admin / Manager update target profile
 	updateEmployee: async (id, employeeData) => {
 		const response = await fetch(`${BASE_URL}/employees/${id}`, {
-			method: 'PUT',
+			method: "PUT",
 			headers: getHeaders(),
-			body: JSON.stringify(employeeData)
+			body: JSON.stringify(employeeData),
 		});
+
 		const data = await response.json();
-
 		if (!response.ok) {
-			throw new Error(data.message || 'Failed to update employee profile.');
+			throw new Error(data.message || "Failed to update employee profile.");
 		}
-
 		return data;
 	},
+
+	// 🔒 Security credential password update
 	changePassword: async (currentPassword, newPassword) => {
-		console.log(currentPassword);
-
 		const response = await fetch(`${BASE_URL}/auth/change-password`, {
-			method: 'POST',
+			method: "POST",
 			headers: getHeaders(),
-			body: JSON.stringify({ currentPassword, newPassword })
+			body: JSON.stringify({ currentPassword, newPassword }),
 		});
 
 		const data = await response.json();
-
 		if (!response.ok) {
-			throw new Error(data.message || 'Failed to update credentials.');
+			throw new Error(data.message || "Failed to update credentials.");
 		}
-
 		return data;
 	},
 
+	// 👤 Self-service profile contact info update
 	updateMyProfile: async (profileData) => {
-		const token = localStorage.getItem("ss_token")
-
 		const response = await fetch(`${BASE_URL}/employees/me`, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
-			},
-			body: JSON.stringify(profileData)
+			method: "PUT",
+			headers: getHeaders(),
+			body: JSON.stringify(profileData),
 		});
 
 		const data = await response.json();
-		if (!response.ok) throw new Error(data.message || 'Failed to update profile');
+		if (!response.ok) throw new Error(data.message || "Failed to update profile.");
 		return data;
-	}
+	},
+
+	// 📜 Fetch recent audit activity logs
+	getLogs: async () => {
+		const response = await fetch(`${BASE_URL}/audit-logs`, {
+			method: "GET",
+			headers: getHeaders(),
+		});
+
+		const data = await response.json();
+		if (!response.ok) throw new Error(data.message || "Failed to fetch audit logs.");
+		return data;
+	},
+};
+
+// 💡 Alias export so AuditLogs.jsx can import either `auditAPI` or `employeeAPI`
+export const auditAPI = {
+	getLogs: employeeAPI.getLogs,
 };
