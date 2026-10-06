@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/database.js";
 
-//Define Our models
+// Define Our models
 const Employee = sequelize.define('Employee', {
   id: {
     type: DataTypes.INTEGER,
@@ -31,6 +31,19 @@ const Employee = sequelize.define('Employee', {
     type: DataTypes.ENUM('Admin', 'Manager', 'Employee'),
     allowNull: false,
     defaultValue: 'Employee'
+  },
+  department: {
+    type: DataTypes.ENUM(
+      'Engineering',
+      'Product',
+      'Design',
+      'Marketing',
+      'Sales',
+      'HR',
+      'Operations'
+    ),
+    allowNull: false,
+    defaultValue: 'Engineering'
   },
   phone: {
     type: DataTypes.STRING,

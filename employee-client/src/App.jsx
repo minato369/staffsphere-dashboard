@@ -5,12 +5,12 @@ import { useAuth } from './context/AuthContext'
 import Directory from './pages/Directory'
 import Profile from './pages/Profile'
 import AuditLogs from './pages/AuditLogs'
+import Analytics from './pages/Analytics'
 
 function App() {
 	const { isAuthenticated, user, updateUser, logout } = useAuth();
-	// Tracking active view: 'directory' | 'audit' | 'profile'
+	// Tracking active view: 'directory' | 'analytics' | 'audit' | 'profile'
 	const [currentView, setCurrentView] = useState('directory');
-	console.log(user);
 
 	// 1. Guard Check: If the user badge token doesn't exist, force Login View frame
 	if (!isAuthenticated || !user) {
@@ -45,6 +45,17 @@ function App() {
 								}`}
 						>
 							Employee Directory
+						</button>
+
+						{/* Workforce Analytics tab */}
+						<button
+							onClick={() => setCurrentView('analytics')}
+							className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer ${currentView === 'analytics'
+								? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+								: 'text-slate-400 hover:bg-white/5 hover:text-white'
+								}`}
+						>
+							Workforce Analytics
 						</button>
 
 						{/* Audit Logs tab: Visible exclusively to Admins & Managers */}
@@ -103,6 +114,7 @@ function App() {
 				{/* Conditional View Rendering */}
 				<div className="p-8 flex-1 bg-slate-50">
 					{currentView === 'directory' && <Directory />}
+					{currentView === 'analytics' && <Analytics />}
 					{currentView === 'audit' && isPrivileged && <AuditLogs />}
 					{currentView === 'profile' && (
 						<Profile user={user} onProfileUpdated={(updatedUser) => updateUser(updatedUser)} />
@@ -111,7 +123,7 @@ function App() {
 			</main>
 
 		</div>
-	)
+	);
 }
 
-export default App
+export default App;

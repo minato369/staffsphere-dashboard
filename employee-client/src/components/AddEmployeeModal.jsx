@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { employeeAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+const DEPARTMENTS = [
+    'Engineering',
+    'Product',
+    'Design',
+    'Marketing',
+    'Sales',
+    'HR',
+    'Operations'
+];
+
 const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
     const { user } = useAuth();
     const [name, setName] = useState('');
@@ -9,6 +19,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
     const [password, setPassword] = useState('');
     const [employeeId, setEmployeeId] = useState('');
     const [role, setRole] = useState('Employee');
+    const [department, setDepartment] = useState('Engineering');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,13 +38,14 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
         setIsSubmitting(true);
 
         try {
-            await employeeAPI.create({ employeeId, name, email, password, role });
+            await employeeAPI.create({ employeeId, name, email, password, role, department });
 
             setName('');
             setEmail('');
             setPassword('');
             setEmployeeId('');
             setRole('Employee');
+            setDepartment('Engineering');
             onRefresh();
             onClose();
 
@@ -50,7 +62,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
             <div className="absolute inset-0" onClick={onClose} />
 
             {/* Slide-out Menu Panel container */}
-            <div className="relative z-10 h-full w-full max-w-md bg-white p-8 shadow-2xl flex flex-col justify-between border-l border-slate-100 animate-slide-in">
+            <div className="relative z-10 h-full w-full max-w-md bg-white p-8 shadow-2xl flex flex-col justify-between border-l border-slate-100 animate-slide-in overflow-y-auto">
                 <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                         <div>
@@ -62,7 +74,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
                         </button>
                     </div>
 
-                    {/* 🛠️ ADDED: Premium High-Contrast Validation Warning Banner */}
+                    {/* High-Contrast Validation Warning Banner */}
                     {error && (
                         <div className="flex items-start gap-3 rounded-2xl bg-red-50 p-4 border border-red-200/60 animate-in fade-in duration-200">
                             <div className="shrink-0 text-red-500 mt-0.5">
@@ -132,7 +144,6 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
 
                         <div className="space-y-1.5">
                             <label className="block text-xs font-bold text-slate-700">Access Privilege Role</label>
-
                             {user?.role === 'Manager' ? (
                                 <input
                                     type="text"
@@ -151,10 +162,26 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
                                 </select>
                             )}
                         </div>
+
+                        {/* Operational Department Assignment */}
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">Operational Department</label>
+                            <select
+                                value={department}
+                                onChange={(e) => setDepartment(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 transition focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-600/5 shadow-xs cursor-pointer"
+                            >
+                                {DEPARTMENTS.map((dept) => (
+                                    <option key={dept} value={dept}>
+                                        {dept}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </form>
                 </div>
 
-                <div className="flex items-center gap-3 border-t border-slate-100 pt-4 bg-white">
+                <div className="flex items-center gap-3 border-t border-slate-100 pt-4 mt-6 bg-white shrink-0">
                     <button
                         type="button"
                         onClick={onClose}

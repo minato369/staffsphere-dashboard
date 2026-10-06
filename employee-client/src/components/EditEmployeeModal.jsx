@@ -1,11 +1,22 @@
-import React from 'react'
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+
+const DEPARTMENTS = [
+	'Engineering',
+	'Product',
+	'Design',
+	'Marketing',
+	'Sales',
+	'HR',
+	'Operations'
+];
+
 const EditEmployeeModal = ({ isOpen, onClose, employee, onUpdateSuccess, currentUserRole }) => {
 	const [formData, setFormData] = useState({
 		name: '',
 		email: '',
 		role: 'Employee',
+		department: 'Engineering',
 		phone: '',
 		address: ''
 	});
@@ -20,6 +31,7 @@ const EditEmployeeModal = ({ isOpen, onClose, employee, onUpdateSuccess, current
 				name: employee.name || '',
 				email: employee.email || '',
 				role: employee.role || 'Employee',
+				department: employee.department || 'Engineering',
 				phone: employee.phone || '',
 				address: employee.address || ''
 			});
@@ -47,6 +59,7 @@ const EditEmployeeModal = ({ isOpen, onClose, employee, onUpdateSuccess, current
 			setLoading(false);
 		}
 	};
+
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
 			<div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl transition-all">
@@ -57,7 +70,7 @@ const EditEmployeeModal = ({ isOpen, onClose, employee, onUpdateSuccess, current
 					</div>
 					<button
 						onClick={onClose}
-						className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+						className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
 					>
 						<X className="w-5 h-5" />
 					</button>
@@ -100,24 +113,44 @@ const EditEmployeeModal = ({ isOpen, onClose, employee, onUpdateSuccess, current
 						/>
 					</div>
 
-					<div>
-						<label className="block text-xs font-medium text-slate-600 mb-1">
-							Access Role {!isAdmin && <span className="text-amber-600">(Admin only)</span>}
-						</label>
-						<select
-							name="role"
-							value={formData.role}
-							onChange={handleChange}
-							disabled={!isAdmin}
-							className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${!isAdmin
-								? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-								: 'border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-								}`}
-						>
-							<option value="Employee">Employee</option>
-							<option value="Manager">Manager</option>
-							<option value="Admin">Admin</option>
-						</select>
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+						<div>
+							<label className="block text-xs font-medium text-slate-600 mb-1">
+								Access Role {!isAdmin && <span className="text-amber-600">(Admin only)</span>}
+							</label>
+							<select
+								name="role"
+								value={formData.role}
+								onChange={handleChange}
+								disabled={!isAdmin}
+								className={`w-full rounded-lg border px-3 py-2 text-sm outline-none cursor-pointer ${!isAdmin
+									? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+									: 'border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+									}`}
+							>
+								<option value="Employee">Employee</option>
+								<option value="Manager">Manager</option>
+								<option value="Admin">Admin</option>
+							</select>
+						</div>
+
+						<div>
+							<label className="block text-xs font-medium text-slate-600 mb-1">
+								Department
+							</label>
+							<select
+								name="department"
+								value={formData.department}
+								onChange={handleChange}
+								className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+							>
+								{DEPARTMENTS.map((dept) => (
+									<option key={dept} value={dept}>
+										{dept}
+									</option>
+								))}
+							</select>
+						</div>
 					</div>
 
 					<div>
@@ -162,7 +195,7 @@ const EditEmployeeModal = ({ isOpen, onClose, employee, onUpdateSuccess, current
 				</form>
 			</div>
 		</div>
-	)
-}
+	);
+};
 
-export default EditEmployeeModal
+export default EditEmployeeModal;

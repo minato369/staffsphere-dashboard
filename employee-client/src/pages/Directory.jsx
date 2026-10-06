@@ -1,15 +1,26 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import { employeeAPI } from '../services/api';
 import AddEmployeeModal from '../components/AddEmployeeModal';
 import EditEmployeeModal from '../components/EditEmployeeModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import ForcePasswordResetModal from '../components/ForcePasswordResetModal';
 import { useAuth } from '../context/AuthContext';
-import { Trash2, Pencil, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import exportToCsv from '../utils/exportCsv.js'
+import { Trash2, Pencil, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Building2 } from 'lucide-react';
+import exportToCsv from '../utils/exportCsv.js';
+
+const DEPARTMENTS = [
+	'All',
+	'Engineering',
+	'Product',
+	'Design',
+	'Marketing',
+	'Sales',
+	'HR',
+	'Operations'
+];
 
 const Directory = () => {
-	const { user, updateUser } = useAuth()
+	const { user, updateUser } = useAuth();
 	const [employees, setEmployees] = useState([]);
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(true);
@@ -19,14 +30,16 @@ const Directory = () => {
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 	const [selectedEmployee, setSelectedEmployee] = useState(null);
 
+	// Filter states
 	const [searchTerm, setSearchTerm] = useState('');
 	const [roleFilter, setRoleFilter] = useState('All');
+	const [departmentFilter, setDepartmentFilter] = useState('All');
 
-	// States for Pagination
+	// Pagination states
 	const [currentPage, setCurrentPage] = useState(1);
 	const [rowsPerPage, setRowsPerPage] = useState(10);
 
-	// States for Edit Modal
+	// Edit modal states
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 	const [selectedEditEmployee, setSelectedEditEmployee] = useState(null);
 
@@ -35,7 +48,7 @@ const Directory = () => {
 	const totalManagers = employees.filter(emp => emp.role === 'Manager').length;
 	const totalEmployees = employees.filter(emp => emp.role === 'Employee').length;
 
-	// Reset to page 1 whenever search terms or role filters mutate
+	// Reset pagination to first page when search criteria change
 	const handleSearchChange = (e) => {
 		setSearchTerm(e.target.value);
 		setCurrentPage(1);
@@ -46,19 +59,27 @@ const Directory = () => {
 		setCurrentPage(1);
 	};
 
-	// 1. Filtered Dataset
+	const handleDepartmentChange = (e) => {
+		setDepartmentFilter(e.target.value);
+		setCurrentPage(1);
+	};
+
+	// Filtered Dataset across search term, role, and department
 	const filteredEmployees = employees.filter((emp) => {
+		const query = searchTerm.toLowerCase();
 		const matchesSearch =
-			emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
+			emp.name?.toLowerCase().includes(query) ||
+			emp.email?.toLowerCase().includes(query) ||
+			emp.employeeId?.toLowerCase().includes(query) ||
+			emp.department?.toLowerCase().includes(query);
 
 		const matchesRole = roleFilter === 'All' || emp.role === roleFilter;
+		const matchesDept = departmentFilter === 'All' || (emp.department || 'Engineering') === departmentFilter;
 
-		return matchesSearch && matchesRole;
+		return matchesSearch && matchesRole && matchesDept;
 	});
 
-	// 2. Pagination Calculations
+	// Pagination range calculations
 	const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage) || 1;
 	const indexOfLastRow = currentPage * rowsPerPage;
 	const indexOfFirstRow = indexOfLastRow - rowsPerPage;
@@ -75,7 +96,6 @@ const Directory = () => {
 		}
 	};
 
-	// Execute API removal command on concrete confirmation
 	const handleDeleteExecute = async () => {
 		if (!selectedEmployee) return;
 		await employeeAPI.delete(selectedEmployee.id);
@@ -87,13 +107,11 @@ const Directory = () => {
 		setIsDeleteModalOpen(true);
 	};
 
-	// Trigger Edit Modal Pre-filled
 	const triggerEditPrompt = (employee) => {
 		setSelectedEditEmployee(employee);
 		setIsEditModalOpen(true);
 	};
 
-	// Execute Update API call and update state locally
 	const handleUpdateExecute = async (id, updatedFields) => {
 		const response = await employeeAPI.updateEmployee(id, updatedFields);
 		const updatedRecord = response.employee || response;
@@ -107,10 +125,30 @@ const Directory = () => {
 		updateUser(updatedUser);
 	};
 
-	// Handle CSV export (exports all matching records across all pages)
 	const handleExport = () => {
 		const recordsToExport = filteredEmployees.length > 0 ? filteredEmployees : employees;
-		exportToCsv(recordsToExport, `employees_export_${new Date().toISOString().slice(0, 10)}.csv`);
+		exportToCsv(recordsToExport, `staffsphere_directory_${new Date().toISOString().slice(0, 10)}.csv`);
+	};
+
+	const getDepartmentBadgeStyle = (dept = 'Engineering') => {
+		switch (dept) {
+			case 'Engineering':
+				return 'bg-blue-50 text-blue-700 border-blue-200/80';
+			case 'Product':
+				return 'bg-violet-50 text-violet-700 border-violet-200/80';
+			case 'Design':
+				return 'bg-pink-50 text-pink-700 border-pink-200/80';
+			case 'Marketing':
+				return 'bg-orange-50 text-orange-700 border-orange-200/80';
+			case 'Sales':
+				return 'bg-amber-50 text-amber-700 border-amber-200/80';
+			case 'HR':
+				return 'bg-teal-50 text-teal-700 border-teal-200/80';
+			case 'Operations':
+				return 'bg-slate-100 text-slate-700 border-slate-200';
+			default:
+				return 'bg-indigo-50 text-indigo-700 border-indigo-200/80';
+		}
 	};
 
 	useEffect(() => {
@@ -118,6 +156,8 @@ const Directory = () => {
 	}, []);
 
 	if (loading) return <div className="text-sm text-slate-500 font-medium p-8">Querying database matrix profiles...</div>;
+
+	const hasActiveFilters = searchTerm !== '' || roleFilter !== 'All' || departmentFilter !== 'All';
 
 	return (
 		<div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6">
@@ -211,9 +251,10 @@ const Directory = () => {
 				</div>
 			)}
 
-			{/* Interactive Search and Filter Toolbar Row */}
-			<div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/60 shadow-xs">
-				<div className="relative w-full sm:flex-1">
+			{/* Interactive Search, Role, and Department Filter Toolbar */}
+			<div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/60 shadow-xs">
+				{/* Search input */}
+				<div className="relative flex-1">
 					<div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
 						<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
 					</div>
@@ -221,22 +262,55 @@ const Directory = () => {
 						type="text"
 						value={searchTerm}
 						onChange={handleSearchChange}
-						placeholder="Search workspace profiles by name, email, or employee ID..."
+						placeholder="Search workspace profiles by name, email, ID, or department..."
 						className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 transition focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-600/5 placeholder-slate-400 font-medium"
 					/>
 				</div>
 
-				<div className="w-full sm:w-48">
-					<select
-						value={roleFilter}
-						onChange={handleRoleChange}
-						className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 font-semibold transition focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-600/5 shadow-xs cursor-pointer"
-					>
-						<option value="All">All Status Roles</option>
-						<option value="Admin">System Admin</option>
-						<option value="Manager">Active Manager</option>
-						<option value="Employee">Standard Employee</option>
-					</select>
+				<div className="flex flex-col sm:flex-row items-center gap-3">
+					{/* Role Filter */}
+					<div className="w-full sm:w-44">
+						<select
+							value={roleFilter}
+							onChange={handleRoleChange}
+							className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 transition focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-600/5 shadow-xs cursor-pointer"
+						>
+							<option value="All">All Roles</option>
+							<option value="Admin">Admin</option>
+							<option value="Manager">Manager</option>
+							<option value="Employee">Employee</option>
+						</select>
+					</div>
+
+					{/* Department Filter */}
+					<div className="w-full sm:w-48">
+						<select
+							value={departmentFilter}
+							onChange={handleDepartmentChange}
+							className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 transition focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-600/5 shadow-xs cursor-pointer"
+						>
+							{DEPARTMENTS.map((dept) => (
+								<option key={dept} value={dept}>
+									{dept === 'All' ? 'All Departments' : dept}
+								</option>
+							))}
+						</select>
+					</div>
+
+					{/* Reset Button */}
+					{hasActiveFilters && (
+						<button
+							onClick={() => {
+								setSearchTerm('');
+								setRoleFilter('All');
+								setDepartmentFilter('All');
+								setCurrentPage(1);
+							}}
+							className="text-xs font-bold text-slate-500 hover:text-indigo-600 transition px-2 py-1 cursor-pointer shrink-0"
+						>
+							Reset
+						</button>
+					)}
 				</div>
 			</div>
 
@@ -250,6 +324,7 @@ const Directory = () => {
 								<th className="px-6 py-4">Employee ID</th>
 								<th className="px-6 py-4">Full Name</th>
 								<th className="px-6 py-4">Email Address</th>
+								<th className="px-6 py-4">Department</th>
 								<th className="px-6 py-4">Access Role</th>
 								{(user?.role === 'Admin' || user?.role === 'Manager') && (
 									<th className="px-6 py-4 text-right">Actions</th>
@@ -263,6 +338,14 @@ const Directory = () => {
 									<td className="px-6 py-4 font-medium text-slate-600">{emp.employeeId}</td>
 									<td className="px-6 py-4 font-bold text-slate-950">{emp.name}</td>
 									<td className="px-6 py-4 text-slate-600">{emp.email}</td>
+									{/* Department Badge */}
+									<td className="px-6 py-4">
+										<span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold border ${getDepartmentBadgeStyle(emp.department)}`}>
+											<Building2 className="w-3 h-3 opacity-70" />
+											{emp.department || 'Engineering'}
+										</span>
+									</td>
+									{/* Role Badge */}
 									<td className="px-6 py-4">
 										<span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold border ${emp.role === 'Admin'
 											? 'bg-purple-50 text-purple-700 border-purple-100'
@@ -307,7 +390,7 @@ const Directory = () => {
 
 							{filteredEmployees.length === 0 && (
 								<tr>
-									<td colSpan={(user?.role === 'Admin' || user?.role === 'Manager') ? "6" : "5"} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
+									<td colSpan={(user?.role === 'Admin' || user?.role === 'Manager') ? "7" : "6"} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
 										No active employee profiles found matching your search parameters.
 									</td>
 								</tr>
@@ -316,10 +399,9 @@ const Directory = () => {
 					</table>
 				</div>
 
-				{/* 📑 Dynamic Pagination Controls Toolbar */}
+				{/* Dynamic Pagination Controls */}
 				{filteredEmployees.length > 0 && (
 					<div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-200/60 bg-slate-50/60">
-						{/* Current view counts and page sizing */}
 						<div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
 							<span>
 								Showing <strong className="text-slate-800">{indexOfFirstRow + 1}</strong> to <strong className="text-slate-800">{Math.min(indexOfLastRow, filteredEmployees.length)}</strong> of <strong className="text-slate-800">{filteredEmployees.length}</strong> records
@@ -343,7 +425,6 @@ const Directory = () => {
 							</div>
 						</div>
 
-						{/* Page Navigation Buttons */}
 						<div className="flex items-center gap-1">
 							<button
 								onClick={() => setCurrentPage(1)}
@@ -407,7 +488,7 @@ const Directory = () => {
 				currentUserRole={user?.role}
 			/>
 
-			{/* Injected Structural Deletion Protection Guard Modal */}
+			{/* Structural Deletion Confirmation Modal */}
 			<DeleteConfirmationModal
 				isOpen={isDeleteModalOpen}
 				onClose={() => {
@@ -423,7 +504,7 @@ const Directory = () => {
 				onPasswordChanged={handlePasswordResetComplete}
 			/>
 		</div>
-	)
-}
+	);
+};
 
 export default Directory;

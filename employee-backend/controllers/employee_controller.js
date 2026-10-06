@@ -2,8 +2,8 @@ import Employee from "../models/employee.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { logActivity } from "../utils/audit_logger.js";
-// Get All employees
 
+// Get All employees
 export const getAllEmployees = async (req, res) => {
 	try {
 		const employees = await Employee.findAll();
@@ -17,10 +17,9 @@ export const getAllEmployees = async (req, res) => {
 };
 
 // Create new Employee
-
 export const createEmployee = async (req, res) => {
 	try {
-		const { employeeId, name, email, password, role, phone, address, avatar } = req.body;
+		const { employeeId, name, email, password, role, department, phone, address, avatar } = req.body;
 		const creatorRole = req.user.role; // Gathered from our verifyToken middleware payload
 
 		// Basic Validation Check
@@ -30,9 +29,10 @@ export const createEmployee = async (req, res) => {
 
 		// RULE 1 & 2 ENFORCEMENT: Managers can ONLY create standard 'Employee' profiles.
 		// Only 'Admin' accounts can create other 'Admin' or 'Manager' clearance records.
-
 		if (creatorRole === "Manager" && role !== "Employee") {
-			res.status(403).json({ message: "Security breach block. Managers are restricted to creating standard Employee tiers only.", });
+			return res.status(403).json({
+				message: "Security breach block. Managers are restricted to creating standard Employee tiers only."
+			});
 		}
 
 		// Securely hash the initial password
@@ -44,6 +44,7 @@ export const createEmployee = async (req, res) => {
 			email,
 			password: hashedPassword,
 			role,
+			department: department || 'Engineering',
 			phone,
 			address,
 			avatar,
@@ -56,7 +57,7 @@ export const createEmployee = async (req, res) => {
 			req,
 			targetId: newEmployee.id,
 			targetName: newEmployee.name,
-			details: `Initialized ${newEmployee.role} profile with Employee ID: ${newEmployee.employeeId}`
+			details: `Initialized ${newEmployee.role} profile in ${newEmployee.department} with Employee ID: ${newEmployee.employeeId}`
 		});
 
 		res.status(201).json({
@@ -66,6 +67,7 @@ export const createEmployee = async (req, res) => {
 				employeeId: newEmployee.employeeId,
 				name: newEmployee.name,
 				role: newEmployee.role,
+				department: newEmployee.department,
 				email: newEmployee.email,
 				phone: newEmployee.phone,
 				address: newEmployee.address,
@@ -112,7 +114,7 @@ export const deleteEmployee = async (req, res) => {
 
 		await employeeToDelete.destroy();
 
-		//Record Activity Log
+		// Record Activity Log
 		await logActivity({
 			action: 'DELETE_EMPLOYEE',
 			req,
@@ -128,16 +130,14 @@ export const deleteEmployee = async (req, res) => {
 			message: "Profile deletion failed.",
 			error: error.message,
 		});
-
 	}
-}
+};
 
 export const updateEmployee = async (req, res) => {
 	try {
-
 		const { id } = req.params;
 		const operatorRole = req.user.role;
-		const { name, email, role, phone, address, avatar } = req.body;
+		const { name, email, role, department, phone, address, avatar } = req.body;
 
 		const employee = await Employee.findByPk(id);
 
@@ -164,6 +164,7 @@ export const updateEmployee = async (req, res) => {
 		}
 
 		employee.name = name || employee.name;
+		employee.department = department || employee.department;
 		employee.phone = phone !== undefined ? phone : employee.phone;
 		employee.address = address !== undefined ? address : employee.address;
 		employee.avatar = avatar !== undefined ? avatar : employee.avatar;
@@ -175,7 +176,7 @@ export const updateEmployee = async (req, res) => {
 
 		await employee.save();
 
-		//Record Activity Log
+		// Record Activity Log
 		await logActivity({
 			action: 'UPDATE_EMPLOYEE',
 			req,
@@ -190,8 +191,9 @@ export const updateEmployee = async (req, res) => {
 				id: employee.id,
 				employeeId: employee.employeeId,
 				name: employee.name,
-				email: employee.email,
 				role: employee.role,
+				department: employee.department,
+				email: employee.email,
 				phone: employee.phone,
 				address: employee.address,
 				avatar: employee.avatar
@@ -211,8 +213,6 @@ export const updateEmployee = async (req, res) => {
 
 export const updateMyProfile = async (req, res) => {
 	try {
-		console.log('here');
-
 		const userId = req.user.id; // Extracted from verified JWT token
 		const { phone, address, avatar } = req.body;
 		const employee = await Employee.findByPk(userId);
@@ -227,7 +227,7 @@ export const updateMyProfile = async (req, res) => {
 
 		await employee.save();
 
-		//Record Activity Log
+		// Record Activity Log
 		await logActivity({
 			action: 'PROFILE_UPDATE',
 			req,
@@ -242,8 +242,9 @@ export const updateMyProfile = async (req, res) => {
 				id: employee.id,
 				employeeId: employee.employeeId,
 				name: employee.name,
-				email: employee.email,
 				role: employee.role,
+				department: employee.department,
+				email: employee.email,
 				phone: employee.phone,
 				address: employee.address,
 				avatar: employee.avatar
@@ -256,4 +257,3 @@ export const updateMyProfile = async (req, res) => {
 		});
 	}
 };
-
